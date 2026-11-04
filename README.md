@@ -56,6 +56,22 @@ Over four weeks you build it with Claude Code: specs and plans (Week 1), a devel
 
 You add the rest week by week: `CLAUDE.md` (your stack and test commands), the specs and plans, the skills and agent, the app in `app/`, and the GitHub workflow.
 
+## Run the app
+
+The app is an npm workspace in `app/`: a Fastify API in `app/api` and a React front end in `app/web`. Node 22 or later is required.
+
+```bash
+cd app
+npm install
+cp .env.example api/.env          # then set SESSION_SECRET (needed from F1)
+npm run db:generate               # generate the Prisma client
+npm run dev                       # API on http://127.0.0.1:3000, web on the Vite address
+npm test                          # unit tests for both workspaces
+npm run typecheck
+```
+
+The web dev server forwards `/api/*` to the API. See [CLAUDE.md](CLAUDE.md) for the layout and project rules.
+
 ## Repository structure
 
 Keep to this layout, so every participant's repository looks the same and mentors can find things quickly. Use these exact names. Only the inside of `app/` differs, depending on your stack.

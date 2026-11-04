@@ -1,0 +1,23 @@
+{
+  "name": "trip-expense-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web \"npm run dev -w api\" \"npm run dev -w web\"",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run db:generate -w api",
+    "db:migrate": "npm run db:migrate -w api"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}

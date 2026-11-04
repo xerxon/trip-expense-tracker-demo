@@ -73,7 +73,7 @@ Code follows the basic logging rules: use the logger, never log sensitive data, 
 |R3|A share is the amount divided equally between participants, rounded down to the cent. Leftover cents go one each to participants in the order they were added to the trip.|
 |R4|A person's balance = what they paid − their shares + payments they made − payments they received.|
 |R5|All balances on a trip always add up to exactly zero.|
-|R6|Suggested payments: the person who owes the most pays the person owed the most, repeated until all balances are zero.|
+|R6|Suggested payments: the fewest payments that bring every balance to zero. Each payment goes from a person who owes to a person who is owed. If more than one set has the fewest payments, use the one whose payments come first when listed by payer, then payee, in trip order.|
 |R7|A person cannot be removed while they are in any expense or payment.|
 |R8|Deleting a trip deletes everything in it, after the user confirms.|
 

@@ -1,0 +1,19 @@
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: {
+      // The API has no /api prefix, so strip it when forwarding.
+      "/api": {
+        target: `http://127.0.0.1:${process.env.PORT ?? 3000}`,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
+  },
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.tsx", "src/**/*.test.ts"],
+  },
+});

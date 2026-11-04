@@ -9,6 +9,12 @@ docs/activities-outputs/session-logs/.hook-errors.log
 .env.*
 !.env.example
 
+# Build output, dependencies and local databases (app/)
+node_modules/
+dist/
+*.db
+*.db-journal
+
 # Editors and operating systems
 .vs/
 .vscode/
