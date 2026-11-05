@@ -1,6 +1,6 @@
 # F6 — Settle up
 
-_Status: Approved · Last updated: 2026-11-04 · Source: product.md §3, §4 (R4, R6, R7, R8), §5 Goals, §6 Worked examples, §2 Key terms_
+_Status: Approved · Last updated: 2026-11-05 · Source: product.md §3, §4 (R4, R6, R7, R8), §5 Goals, §6 Worked examples, §2 Key terms_
 
 ## Summary
 The app proposes the fewest payments that bring every balance to zero. The user marks each suggested payment as paid once the money has moved outside the app, and can delete a payment that was marked by mistake. Once every suggested payment is marked paid, every balance on the trip is zero. This is the last step of the trip.
@@ -29,7 +29,7 @@ The app proposes the fewest payments that bring every balance to zero. The user 
 ## User flow & screens
 Screens: **Trip page** (from F3–F5), with a **Settle up** section below **Balances**, containing **Suggested payments** and **Payments made**, plus a **Delete payment** confirmation dialog. No mock screens exist in `docs/design`.
 
-1. **See suggestions.** The Settle up section lists the suggested payments, each as "[payer] pays [payee] [amount]" (for example, "Jo pays Sam 40.00"). With Example 1 from product.md §6, that is two suggestions: Jo pays Sam 40.00, and Alex pays Sam 10.00.
+1. **See suggestions.** The Settle up section lists the suggested payments, each as "[payer] pays [payee] [amount]" (for example, "Alex pays Sam 10.00"), in the order set by F6.R14. With Example 1 from product.md §6, that is two suggestions, in this order: Alex pays Sam 10.00, then Jo pays Sam 40.00.
 2. **Mark a suggestion as paid.** User chooses "Mark as paid" on a suggestion. The suggestion moves to Payments made, and the balances update (F5).
 3. **After all payments.** When no suggestions remain, Settle up shows that everyone is settled, and every balance shows Settled (F5.R3).
 4. **Delete a payment.** User chooses Delete on a payment in Payments made. A dialog asks them to confirm with Cancel and Delete. The payment is removed; its suggestion comes back, recalculated from current balances.
@@ -37,7 +37,7 @@ Screens: **Trip page** (from F3–F5), with a **Settle up** section below **Bala
 
 ## Requirements
 - **F6.R1** Suggested payments are the fewest payments that bring every balance to zero, calculated from the current balances (product.md R6). Each payment goes from a person who owes to a person who is owed, and its amount is a whole number of cents.
-- **F6.R2** If more than one set of payments has the fewest count, the set chosen is the first in this order: list each set's payments sorted by payer position, then payee position, both in trip order; compare the lists element by element; the smaller list wins. (Decided 2026-11-04.)
+- **F6.R2** If more than one set of payments has the fewest count, the set chosen is the first in this order: list each set's payments sorted by payer position, then payee position, both in trip order; compare the lists element by element, where each element is compared by payer position, then payee position, then amount; the smaller list wins. So for two payments with the same payer and payee, the smaller amount comes first. (Decided 2026-11-04; amount rule decided 2026-11-05.)
 - **F6.R3** The number of suggested payments is the fewest possible. It equals the number of people with a non-zero balance, minus the largest number of groups into which those people can be split so that each group's balances add up to zero. Example 1 gives two suggestions (product.md §6). (Derived from product.md R6 and the §5 goal.)
 - **F6.R4** A suggested payment can be marked as paid only for its full amount. Partial payments are not allowed. (Decided 2026-11-04.)
 - **F6.R5** Marking a suggestion as paid creates a payment record with the payer, the payee and the amount, in one database transaction (project rules, product.md R4).
@@ -49,6 +49,7 @@ Screens: **Trip page** (from F3–F5), with a **Settle up** section below **Bala
 - **F6.R11** Payments and suggestions are shown only to the owner of the trip. Every request checks ownership (F1.R10, F2.R9).
 - **F6.R12** A payment record stores its creation time in UTC (project rules).
 - **F6.R13** Deleting a trip (F2) removes its payments in the same transaction (F2.R7).
+- **F6.R14** The suggested payments are shown in the order F6.R2 sorts them: by payer position, then payee position, then amount, all in trip order. With Example 1 this puts Alex pays Sam 10.00 before Jo pays Sam 40.00. (Decided 2026-11-05.)
 
 ## Data & contract
 **Payments (new table):**
@@ -68,7 +69,7 @@ Screens: **Trip page** (from F3–F5), with a **Settle up** section below **Bala
 **Calculation:** a pure function takes the balances from F5 and returns the suggestions in order. It touches no database, so it is unit tested with fake data (project rules). The algorithm is chosen in the plan. The exact minimum is required for every trip size (decided 2026-11-04), so the plan must measure the running time on large trips, since the work can grow very fast with the number of people. A payment request re-runs this function, and refuses if the suggestion does not match (R6).
 
 **Endpoints (paths chosen in the plan):**
-- Suggestions for a trip id: no body. Success: array of `{ payer_id, payer_name, payee_id, payee_name, amount_cents }`.
+- Suggestions for a trip id: no body. Success: `{ has_expenses, suggestions }`, where `has_expenses` is true when the trip has at least one expense, and `suggestions` is an array of `{ payer_id, payer_name, payee_id, payee_name, amount_cents }`. The `has_expenses` flag decides which empty-state message shows (see States & errors).
 - Mark as paid: request `{ payer_id, payee_id, amount_cents }` for a trip id. Success: the new payment. Mismatch: refused with the stale-suggestion message (R6).
 - List payments for a trip id. Success: array, newest first.
 - Delete payment: payment id. Success: no body. Not found: same response as a missing payment (F1.R9).
@@ -90,6 +91,8 @@ Copy below is confirmed as written (2026-11-04).
 | Not found (missing or not owned) | Trip page | "Trip not found." | F1.R9 |
 | Server error | Settle up | "Something went wrong. Try again." | Project rules |
 
+When there are no suggestions: if the trip has no expenses, the section shows "Add expenses to see who pays whom."; otherwise it shows "Everyone is settled." (decided 2026-11-05; the two messages never show together).
+
 Loading: a loading state is shown in the section while suggestions and payments are fetched. Mark as paid and Delete are disabled while their request is in progress, so a double click can't record the same payment twice.
 
 ## Accessibility
@@ -103,7 +106,8 @@ Loading: a loading state is shown in the section while suggestions and payments 
 - Reduced motion: any dialog animation is removed when the user prefers reduced motion.
 
 ## Edge cases
-- Example 1 → two suggestions: Jo pays Sam 40.00 and Alex pays Sam 10.00 (product.md §6).
+- Example 1 → two suggestions, shown as Alex pays Sam 10.00, then Jo pays Sam 40.00 (product.md §6; order per R14).
+- Two minimum sets pay the same pair different amounts → the set with the smaller amount for that pair is chosen (R2).
 - Example 3 → after Jo pays Sam 40.00 is marked paid, one suggestion remains: Alex pays Sam 10.00 (product.md §6).
 - Two people owing 10.00 each, one person owed 20.00 → two suggestions, both paying the person owed 20.00 (R1, R3).
 - Balances A +10.00, B −10.00, C +5.00, D −5.00 → two suggestions: B pays A 10.00 and D pays C 5.00. A method that pays through one person would give three (R3).
@@ -116,7 +120,7 @@ Loading: a loading state is shown in the section while suggestions and payments 
 - A trip with no people → no suggestions, nothing to mark (R1).
 
 ## Acceptance criteria
-- **F6.AC1** Given product.md §6 Example 1, when suggestions are read, then they are Jo pays Sam 40.00 and Alex pays Sam 10.00, in that order. (R1, R3)
+- **F6.AC1** Given product.md §6 Example 1, when suggestions are read, then they are Alex pays Sam 10.00 and then Jo pays Sam 40.00, in that order. (R1, R3, R14)
 - **F6.AC2** Given balances A +10.00, B +10.00, C −10.00, D −10.00 in trip order, when suggestions are read, then they are C pays A 10.00 and D pays B 10.00, because that set comes first in trip order. (R2)
 - **F6.AC13** Given balances A +10.00, B −10.00, C +5.00, D −5.00 in trip order, when suggestions are read, then exactly two payments are suggested: B pays A 10.00 and D pays C 5.00. (R3)
 - **F6.AC3** Given a suggestion, when the user marks it as paid, then a payment for its full amount is recorded and the balances update. (R4, R5)
@@ -129,6 +133,11 @@ Loading: a loading state is shown in the section while suggestions and payments 
 - **F6.AC10** Given any state of payments, when balances are read, then they add up to exactly zero. (R9; product.md R5)
 - **F6.AC11** Given a trip of user B, when user A tries to mark a payment or read suggestions for it, then the response is Not found. (R11; F1.R9)
 - **F6.AC12** Given a payment, when its record is read, then its payer and payee are on the same trip, and the payer and payee are different people. (Data constraints)
+- **F6.AC14** Given balances P +4.00, Q +6.00, X −7.00 and Y −3.00 in trip order P, Q, X, Y, when suggestions are read, then they are X pays P 1.00, X pays Q 6.00 and Y pays P 3.00. Two minimum sets pay X and Y different amounts to P, and the set with 1.00 comes first. (R2, R14)
+- **F6.AC15** Given a trip with expenses and no suggested payments remain (every balance is zero), when the Settle up section loads, then "Everyone is settled." is shown and no suggestion rows appear. (R10)
+- **F6.AC16** Given a trip with no expenses, when the Settle up section loads, then "Add expenses to see who pays whom." is shown and no suggestion rows appear. (R1)
+- **F6.AC17** Given the suggestions request fails, when the Settle up section loads, then "Something went wrong. Try again." is shown and no suggestion rows appear. (Project rules)
+- **F6.AC18** Given suggestions are being fetched, when the Settle up section loads, then a loading state is shown and no rows or messages appear until the response arrives. (Loading state)
 
 ## Dependencies
 - **F1**, **F2**, **F3**, **F4** and **F5** must be built first. F5 supplies the balances that F6 uses.
@@ -138,7 +147,7 @@ Loading: a loading state is shown in the section while suggestions and payments 
 ## Test plan
 Unit tests only (project rules). Each test names its AC ID. Transactions, same-trip checks, ownership and the database constraints go to code review.
 
-- **F6.AC1** Unit test: suggestion function returns Jo pays Sam 40.00 and Alex pays Sam 10.00 for Example 1 with fake balances. (R1, R3)
+- **F6.AC1** Unit test: suggestion function returns Alex pays Sam 10.00, then Jo pays Sam 40.00, for Example 1 with fake balances. (R1, R3, R14)
 - **F6.AC2** Unit test: suggestion function returns C pays A 10.00 and D pays B 10.00 for the A +10, B +10, C −10, D −10 case. (R2)
 - **F6.AC13** Unit test: suggestion function returns exactly two payments for the A +10, B −10, C +5, D −5 case, with the amounts given. (R1, R3)
 - **F6.AC3** Unit test: mark-as-paid service records a payment for the full suggested amount in the fake store. (R4, R5)
@@ -151,6 +160,11 @@ Unit tests only (project rules). Each test names its AC ID. Transactions, same-t
 - **F6.AC10** Unit test: for a set of fake trips with random payments, the balances total zero. (R9)
 - **F6.AC11** Code review: suggestion, payment and delete queries check trip ownership. (R11)
 - **F6.AC12** Code review: payer and payee are on the trip, and a payment's payer and payee differ. Verified by the database constraint and the save transaction. (R5)
+- **F6.AC14** Unit test: suggestion function returns X pays P 1.00, X pays Q 6.00 and Y pays P 3.00 for the P +4, Q +6, X −7, Y −3 case, in that order. (R2, R14)
+- **F6.AC15** Unit test: the Settle up section shows "Everyone is settled." and no rows when the stubbed suggestions are empty and the trip has expenses. (R10)
+- **F6.AC16** Unit test: the Settle up section shows "Add expenses to see who pays whom." and no rows when the stubbed suggestions are empty and the trip has no expenses. (R1)
+- **F6.AC17** Unit test: the Settle up section shows "Something went wrong. Try again." and no rows when the stubbed request fails. (Project rules)
+- **F6.AC18** Unit test: the Settle up section shows a loading state and no rows or messages while the stubbed request is pending. (Loading state)
 
 ## Open questions
 None. All three questions were answered on 2026-11-04 (see Decisions log).
@@ -168,3 +182,11 @@ None. All three questions were answered on 2026-11-04 (see Decisions log).
 - 2026-11-04: Order of the Payments made list? → Newest first.
 - 2026-11-04: Answers changed the spec's substance (placement, copy), so the spec returns to Draft and needs re-approval.
 - 2026-11-04: Spec re-approved by the user.
+- 2026-11-05: Order of the suggestions on the Settle up list? → Rule order (payer position, then payee position, in trip order), so Alex pays Sam 10.00 comes before Jo pays Sam 40.00. Changes AC1 and the Example 1 flow step. Added F6.R14.
+- 2026-11-05: Tie-break when two minimum sets pay the same pair different amounts? → Smaller amount first. Added to F6.R2, with the new edge case and F6.AC14.
+- 2026-11-05: Answers changed the spec's substance (display order, tie-break, new AC), so the spec returns to Draft. Its plan (`docs/plans/F6-settle-up.md`) is out of date: its two Sent back items are answered, and the blocked tasks can now be added. product.md Example 1 and R6 are not edited yet; see the proposed edit.
+- 2026-11-05: Spec approved by the user.
+- 2026-11-05: Gap found in planning: the States table has confirmed copy for "Everyone is settled.", "Add expenses to see who pays whom." and "Something went wrong. Try again.", and a loading state, but no acceptance criteria. Added F6.AC15 to F6.AC18 with their unit tests. No new copy.
+- 2026-11-05: When both empty-state messages could apply (no expenses, so no suggestions) → Show "Add expenses to see who pays whom." when there are no expenses, otherwise "Everyone is settled.". The suggestions response now carries `has_expenses` so the client can choose.
+- 2026-11-05: Spec re-approved by the user (after the new ACs and response shape).
+- 2026-11-05: Answers changed the spec's substance (new ACs, response shape), so the spec returns to Draft and needs re-approval. Its plan (`docs/plans/F6-settle-up.md`) is out of date: its Sent back item is answered, and F6.T15 must cover AC15 to AC18.
