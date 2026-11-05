@@ -1,6 +1,6 @@
 # F5 — Balances
 
-_Status: Approved · Last updated: 2026-11-04 · Source: product.md §3, §4 (R4, R5), §5 Goals, §6 Worked examples_
+_Status: Approved · Last updated: 2026-11-05 · Source: product.md §3, §4 (R4, R5), §5 Goals, §6 Worked examples_
 
 ## Summary
 The trip shows what each person is owed or owes, so anyone can see where the group stands. A balance is what a person paid, minus their share of expenses, adjusted by payments. All balances on a trip always add up to exactly zero. This feature is read-only: it shows numbers computed from expenses and payments.
@@ -103,6 +103,8 @@ Loading: a loading state is shown in the section while the balances are fetched.
 - **F5.AC7** Given an expense is deleted, when balances are read again, then they reflect the deletion. (R7)
 - **F5.AC8** Given the balance section, when the user looks for a control that changes a record, then none exists. (R8)
 - **F5.AC9** Given user B's trip, when user A requests its balances, then the response is Not found. (R9; F1.R9)
+- **F5.AC10** Given a trip with no people, when the Balances section loads, then "Add people to see balances." is shown and no balance rows appear. (R1)
+- **F5.AC11** Given the balances request fails, or the total of balances is not zero, when the Balances section loads, then "Balances couldn't be loaded. Try again." is shown and no balance amounts appear. (R4)
 
 ## Dependencies
 - **F1**, **F2**, **F3** and **F4** must be built first. F6 must exist for payments to affect balances.
@@ -121,6 +123,8 @@ Unit tests only (project rules). Each test names its AC ID. The ownership check 
 - **F5.AC7** Unit test: removing an expense from the fake data changes the balance function's result. (R7)
 - **F5.AC8** Unit test: balances view has no control that writes data. (R8)
 - **F5.AC9** Code review: the balances query checks trip ownership. (R9)
+- **F5.AC10** Unit test: the Balances section shows "Add people to see balances." and no rows when the people list is empty. (R1)
+- **F5.AC11** Unit test: the Balances section shows "Balances couldn't be loaded. Try again." and no rows when the request fails. (R4)
 
 ## Open questions
 None. Both questions were answered on 2026-11-04 (see Decisions log).
@@ -133,3 +137,6 @@ None. Both questions were answered on 2026-11-04 (see Decisions log).
 - 2026-11-04: Where does the Balances section sit on the trip page? → Below Expenses.
 - 2026-11-04: Answers changed the spec's substance (placement), so the spec returns to Draft and needs re-approval.
 - 2026-11-04: Spec re-approved by the user.
+- 2026-11-05: The empty state ("Add people to see balances.") and the error state ("Balances couldn't be loaded. Try again.") had confirmed copy in the States table but no acceptance criterion. Added F5.AC10 and F5.AC11 with their unit tests. No new copy or behaviour.
+- 2026-11-05: Answers changed the spec's substance (two new acceptance criteria), so the spec returned to Draft. Its plan (`docs/plans/F5-balances.md`) needs updating.
+- 2026-11-05: Spec approved by the user.
