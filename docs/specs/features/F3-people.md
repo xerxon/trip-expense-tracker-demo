@@ -116,9 +116,10 @@ Loading: the People list shows a loading state while it fetches. Add and Remove 
 - **F3.AC13** Given a person is added or removed, when the change is saved, then no expense or payment is changed. (R9)
 - **F3.AC14** Given a name with surrounding spaces, when it is added, then the saved name has no surrounding spaces; and a name of only spaces is refused with "Enter a name." (R1)
 - **F3.AC15** Given a person added as "Sam", when the trip is viewed, then the name is shown as "Sam". (R2)
+- **F3.AC16** Given a trip with no people, when the trip page is viewed, then the message "No one is on this trip yet. Add the people who share its expenses." is shown. (R1)
 
 ## Dependencies
-- **F1** (login and ownership) and **F2** (trips, trip page entry point) must be built first. F1 is currently Draft after its 2026-11-04 revision, so F1 needs re-approval before F3 is planned.
+- **F1** (login and ownership) and **F2** (trips, trip page entry point) must be built first. F1 spec and plan are both Approved.
 - **F4** (Expenses) and **F6** (Settle up) add the rows that R4 checks. Until they exist, removal is only blocked by the foreign keys they add, so F3 is not fully testable before F4 is built. Record this in the plan.
 - **Build order:** step 3.
 - **External services:** none.
@@ -131,6 +132,7 @@ Unit tests only (project rules). Each test names its AC ID. Uniqueness, ownershi
 - **F3.AC2** Unit test: add service refuses a name that matches an existing name ignoring capitals, in the fake store, and maps the refusal to HTTP 409 with the duplicate message. (R2)
 - **F3.AC14** Unit test: name normalizer trims surrounding spaces and returns empty for a spaces-only name. (R1)
 - **F3.AC15** Unit test: person row view shows the name as stored, with its capitals. (R2)
+- **F3.AC16** Unit test: the People section shows the empty-state message when the people list is empty. (R1)
 - **F3.AC4** Unit test: people list returns people in position order. (R3)
 - **F3.AC5** Unit test: remove service refuses when the fake store reports the person in an expense. (R4)
 - **F3.AC6** Unit test: remove service refuses when the fake store reports the person in a payment. (R4)
@@ -161,3 +163,5 @@ None. The blocked-removal question was answered on 2026-11-04 (see Decisions log
 - 2026-11-04: Answers changed the spec's substance (trimming, duplicate response, Remove control), so the spec returns to Draft and needs re-approval.
 - 2026-11-04: Response for a blocked removal → HTTP 409 with JSON `{ "error": "[name] is in an expense or payment, so they can't be removed." }` (F3.R4, F3.AC5).
 - 2026-11-04: Spec re-approved by the user.
+- 2026-11-05: Dependencies said F1 was Draft. F1 spec and plan are Approved, so the line was corrected. No requirement changed.
+- 2026-11-05: The empty-state message ("No one is on this trip yet…", from the States table) had no acceptance criterion. Added F3.AC16 (R1) and its unit test. Approved by the user with the plan.
