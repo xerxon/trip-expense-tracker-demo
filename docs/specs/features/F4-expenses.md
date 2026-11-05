@@ -1,6 +1,6 @@
 # F4 — Expenses
 
-_Status: Approved · Last updated: 2026-11-04 · Source: product.md §3, §2, §4 (R1, R2, R3, R8), §5 Goals, §6 Worked examples_
+_Status: Approved · Last updated: 2026-11-05 · Source: product.md §3, §2, §4 (R1, R2, R3, R8), §5 Goals, §6 Worked examples_
 
 ## Summary
 A user records an expense by entering four things: what it was, how much, who paid, and who shares it. The amount is split equally, to the cent, between the people who share it. This is the core data entry of the app. Every balance (F5) and settlement (F6) is built from these records.
@@ -52,7 +52,7 @@ Adding is blocked when the trip has no people, because an expense needs a payer 
 - **F4.R10** Deleting an expense requires confirmation in a dialog with Cancel and Delete. The expense is deleted only when the user chooses Delete. (Decided 2026-11-04.)
 - **F4.R11** Expenses cannot be edited (product.md §2 Assumptions).
 - **F4.R12** A new expense is saved together with its payer, participants and shares in one database transaction (project rules).
-- **F4.R13** The amount has no cap beyond what the stored cents value can hold. (Decided 2026-11-04.)
+- **F4.R13** An amount above 21,474,836.47 is refused, not saved, with the message "Amounts can be up to 21,474,836.47." Cents are stored as a 32-bit whole number, which sets this limit. (Decided 2026-11-05; replaces the 2026-11-04 "no cap" wording.)
 - **F4.R14** Every request to add, list or delete expenses requires a session and an ownership check on the trip (F1.R10, F2.R9). A request for another user's trip returns Not found (F1.R9).
 
 ## Data & contract
@@ -60,7 +60,7 @@ Adding is blocked when the trip has no people, because an expense needs a payer 
 - `id` — unique identifier
 - `trip_id` — references trips; required
 - `description` — optional text, at most 100 characters (R6)
-- `amount_cents` — whole number greater than zero (R1)
+- `amount_cents` — whole number greater than zero and at most 2,147,483,647 (R1, R13)
 - `payer_id` — references people on the same trip; required (R3)
 - `created_at` — UTC
 
@@ -75,9 +75,9 @@ Adding is blocked when the trip has no people, because an expense needs a payer 
 - Removal of a person is blocked while an expense participant or payer row refers to them (F3.R4).
 
 **Endpoints (paths chosen in the plan):**
-- Add expense: request `{ description?, amount_cents or amount, payer_id, participant_ids[] }` for a trip id. Success: the saved expense with its shares. Validation failure: HTTP 400 with `{ "error": "<message>" }`, the same shape as F2.AC15, and nothing saved.
+- Add expense: request `{ description?, amount, payer_id, participant_ids[] }` for a trip id, where `amount` is a string of decimal dollars. Success: the saved expense with its shares. Validation failure: HTTP 400 with `{ "error": "<message>" }`, the same shape as F2.AC15, and nothing saved. A payer or sharer who is not on the trip: HTTP 400 with `{ "error": "Choose people from this trip." }`, nothing saved (F4.R3).
 - List expenses: for a trip id. Success: array, newest first.
-- Delete expense: expense id. Success: no body. Not found: same response as a missing expense (F1.R9).
+- Delete expense: expense id. Success: no body. Not found (missing, or on another user's trip): HTTP 404 with `{ "error": "Expense not found." }`, the same response for both (F1.R9).
 
 **Amount input:** the user types decimal dollars (for example 12.34). The server converts to cents once, before any calculation. Floating-point values are never stored or used in a split (project rules).
 
@@ -86,7 +86,7 @@ Adding is blocked when the trip has no people, because an expense needs a payer 
 **Browser storage:** none.
 
 ## States & errors
-Copy below is confirmed as written (2026-11-04).
+Copy below is confirmed as written (2026-11-04). The four messages added on 2026-11-05 (amount too large, payer or sharer not on the trip, expense not found, and the empty state) are also confirmed as written.
 
 | Situation | Where | Proposed copy | Rule |
 |---|---|---|---|
@@ -98,10 +98,13 @@ Copy below is confirmed as written (2026-11-04).
 | No payer chosen | Add expense | "Choose who paid." | R4 |
 | No participant ticked | Add expense | "Choose at least one person to share this expense." | R5 |
 | Description over 100 characters | Add expense | "Descriptions can be up to 100 characters." | R6 |
+| Amount above 21,474,836.47 | Add expense | "Amounts can be up to 21,474,836.47." | R13 |
+| Payer or sharer not on this trip (forged request only) | Add expense | "Choose people from this trip." | R3 |
 | Expense added | Trip page | None; expense at the top of the list | R9 |
 | Delete dialog | Trip page | Title: "Delete this expense?" Body: "The balances on this trip will change." Buttons: Cancel, Delete | R10 |
 | Expense deleted | Trip page | None; row removed | R10 |
 | Not found (missing or not owned) | Trip page | "Trip not found." | F1.R9 |
+| Expense not found (missing or not owned) | Trip page | "Expense not found." | F1.R9 |
 | Server error | Trip page | "Something went wrong. Try again." | Project rules |
 
 Loading: the expenses list shows a loading state while it fetches. Save and Delete are disabled while their request is in progress, so a double click can't save two expenses.
@@ -125,6 +128,8 @@ Loading: the expenses list shows a loading state while it fetches. Save and Dele
 - Amount of 10.00 shared by three people → shares 3.34, 3.33, 3.33; the first person in trip order gets the extra cent (R7, product.md §6 Example 2).
 - Amount of 0.02 shared by three people → shares 0.01, 0.01, 0.00. Rounded-down shares sum to 0.02 with the leftover cent going to the first two in trip order (R7, R8).
 - Payer not in the participant list → allowed (R3).
+- Amount of 21,474,836.47 → accepted, the largest amount (R13). Amount of 21,474,836.48 → refused with the cap message (R13, F4.AC19).
+- Payer or sharer from another trip (forged request) → refused with "Choose people from this trip." (R3).
 - Only one person ticked as participant → allowed; the share is the whole amount (R3, R5).
 - Trip with no people → adding is blocked (R3).
 - Person removed after being in an expense → blocked by F3.R4, so the expense never loses a person.
@@ -151,6 +156,8 @@ Loading: the expenses list shows a loading state while it fetches. Save and Dele
 - **F4.AC15** Given user B's trip, when user A adds an expense to it, then the request returns Not found and nothing is saved. (R14; F1.R9)
 - **F4.AC16** Given a description of only spaces, when the expense is saved, then it is saved with no description and no error is shown. (R6)
 - **F4.AC17** Given an amount of "$1,200.00" or "1,200.00", when the user submits, then the expense is not saved and the cents error is shown. (R2)
+- **F4.AC18** Given a trip with no expenses, when the trip page is viewed, then "No expenses yet. Add the first one." and an Add expense button are shown. (R9)
+- **F4.AC19** Given an amount above 21,474,836.47, when the user submits, then the expense is not saved and "Amounts can be up to 21,474,836.47." is shown. (R13)
 
 ## Dependencies
 - **F1**, **F2** and **F3** must be built first. F3 supplies the people who pay and share.
@@ -178,10 +185,12 @@ Unit tests only (project rules). Each test names its AC ID. Transactions, the sa
 - **F4.AC13** Unit test: Delete in the dialog calls the delete service once for the chosen expense. (R10)
 - **F4.AC14** Unit test: expense row view has no edit control. (R11)
 - **F4.AC15** Code review: the save and list queries include the trip owner check, and the save refuses a payer or participant from another trip. (R14)
-- **F4.AC1** Code review: the stored shares for an expense are written in the same transaction as the expense. (R12)
+- **F4.AC18** Unit test: the expenses list view shows "No expenses yet. Add the first one." and the Add expense button when the list is empty. (R9)
+- **F4.AC19** Unit test: amount parser refuses 21,474,836.48 and accepts 21,474,836.47. (R13)
+- **F4.R12** Code review: the stored shares for an expense are written in the same transaction as the expense. (R12)
 
 ## Open questions
-None. All four questions were answered on 2026-11-04 (see Decisions log).
+None. The four questions from 2026-11-04 and the three from 2026-11-05 are answered (see Decisions log).
 
 ## Decisions log
 - 2026-11-04: Maximum amount? → No cap beyond storage limits.
@@ -199,3 +208,10 @@ None. All four questions were answered on 2026-11-04 (see Decisions log).
 - 2026-11-04: Response for a validation failure → HTTP 400 with JSON `{ "error" }`, the same shape as F2.AC15.
 - 2026-11-04: Answers changed the spec's substance (sharers line, description and amount rules), so the spec returns to Draft and needs re-approval.
 - 2026-11-04: Spec re-approved by the user.
+- 2026-11-05: Too large to store? → Refused above 21,474,836.47 with "Amounts can be up to 21,474,836.47." (F4.R13, F4.AC19). This replaces "no cap beyond storage"; the limit comes from the 32-bit cents column.
+- 2026-11-05: Copy when a missing or not-owned expense is deleted? → "Expense not found." (404; F1.R9). The trip-level "Trip not found." stays for trip-level misses.
+- 2026-11-05: Copy when a payer or sharer is not on the trip (forged request only)? → "Choose people from this trip." (400; F4.R3).
+- 2026-11-05: The empty state for the expenses list had no acceptance criterion. Added F4.AC18 (R9). Its copy was already in the States table.
+- 2026-11-05: The test-plan row for the same-transaction check was labelled F4.AC1, which is the split test. Relabelled as F4.R12, since it checks R12, not an AC.
+- 2026-11-05: Answers changed the spec's substance (the cap, two new messages, and two new acceptance criteria), so the spec returned to Draft. Its plan (`docs/plans/F4-expenses.md`) needs updating.
+- 2026-11-05: Spec approved by the user.
