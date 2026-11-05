@@ -1,9 +1,9 @@
 # F2 — Trips
 
-_Status: Approved · Last updated: 2026-11-04 · Source: product.md §3, §2, §4 (R8)_
+_Status: Approved · Last updated: 2026-11-05 · Source: product.md §3, §2, §4 (R8)_
 
 ## Summary
-A logged-in user creates a trip with a name, sees a list of their own trips, and deletes a trip they no longer need. Trips are the container for everything else in the app: people (F3), expenses (F4), balances (F5) and settling up (F6). This feature guarantees that a user sees and changes only their own trips.
+A logged-in user creates a trip with a name, sees a list of their own trips, opens one to see its page, and deletes a trip they no longer need. Trips are the container for everything else in the app: people (F3), expenses (F4), balances (F5) and settling up (F6). This feature guarantees that a user sees and changes only their own trips.
 
 ## User stories
 - As a user, I want to create a trip with a name, so that I can start tracking its shared spending.
@@ -15,6 +15,7 @@ A logged-in user creates a trip with a name, sees a list of their own trips, and
 **In:**
 - Create a trip with a name (product.md §3 F2)
 - List your trips (product.md §3 F2)
+- Open a trip from the list to its trip page, which shows the trip name only in F2 (F2.R11, F2.R12)
 - Delete a trip, with confirmation, removing everything in it (product.md §3 F2, R8)
 - Ownership: a user sees and changes only their own trips (product.md §2 Ownership rule; F2 "Done when")
 - Empty state on the trip list
@@ -22,19 +23,20 @@ A logged-in user creates a trip with a name, sees a list of their own trips, and
 **Out:**
 - Editing a trip's name or any other field (product.md §2 Assumptions: no editing)
 - Trip dates, description, currency or any other trip field (product.md §3 F2 lists only a name)
-- Trip page contents: people (F3), expenses (F4), balances (F5), settling up (F6)
+- Trip page contents beyond the name: people (F3), expenses (F4), balances (F5), settling up (F6)
 - Sharing trips with other users (product.md "After the core": out of scope)
 - Undo after delete (not stated anywhere in product.md, and deletion is confirmed before it happens)
 - Deleting people, expenses or payments individually (F3, F4, F6)
 
 ## User flow & screens
-Screens: **Trips** (the landing page from F1), **Create trip** (a separate page, opened from a Create trip button on Trips), and the **Delete trip** confirmation dialog. No mock screens exist in `docs/design`.
+Screens: **Trips** (the landing page from F1), **Create trip** (a separate page, opened from a Create trip button on Trips), **Trip page** (opened from a trip's name on Trips), and the **Delete trip** confirmation dialog. No mock screens exist in `docs/design`.
 
 1. **Empty list.** A new user lands on Trips and sees the empty-state message with a Create trip button (R5).
 2. **Create a trip.** User chooses Create trip, enters a name, and submits. The trip is saved and the user is back on Trips, with the new trip at the top of the list (R1, R3).
-3. **View trips.** Trips shows only the user's own trips, newest first, each row showing the name only (R4).
-4. **Delete a trip.** User chooses Delete on a trip row. A dialog asks them to confirm, with Cancel and Delete buttons (R6). Cancel closes the dialog and nothing changes. Delete removes the trip and everything in it, then the list refreshes without that trip (R7).
-5. **Trip belonging to someone else.** Another user's trip never appears in the list. If its URL is opened, the user sees Not found (R8, F1.R9).
+3. **View trips.** Trips shows only the user's own trips, newest first, each row showing the name only. The name is a link to the trip page (R4, R11).
+4. **Open a trip.** User selects the trip's name. The Trip page opens, with the trip name as its heading and no other content in F2 (R12, F2.AC16).
+5. **Delete a trip.** User chooses Delete on a trip row. A dialog asks them to confirm, with Cancel and Delete buttons (R6). Cancel closes the dialog and nothing changes. Delete removes the trip and everything in it, then the list refreshes without that trip (R7).
+6. **Trip belonging to someone else, or missing.** Another user's trip never appears in the list. If its URL is opened, or a trip has been deleted, the user sees Trip not found (R8, F1.R9, R12).
 
 ## Requirements
 - **F2.R1** A logged-in user can create a trip by entering a name. The name is trimmed of surrounding spaces before any check; a name of only spaces counts as empty. After trimming, the name is required and at most 50 characters. Two trips owned by the same user may have the same name. (Decided 2026-11-04.)
@@ -44,9 +46,11 @@ Screens: **Trips** (the landing page from F1), **Create trip** (a separate page,
 - **F2.R5** When the user has no trips, the list shows an explanatory message and a Create trip button. (Decided 2026-11-04.)
 - **F2.R6** Deleting a trip requires confirmation in a dialog with Cancel and Delete. The trip is deleted only when the user chooses Delete. (Decided 2026-11-04.)
 - **F2.R7** Deleting a trip removes the trip and everything in it (product.md R8). The delete runs in one database transaction, so a partial delete never happens (project rules). Each later feature (F3–F6) must add its own records to this delete.
-- **F2.R8** Trips cannot be edited. Only create, list and delete exist (product.md §2 Assumptions).
-- **F2.R9** Create, list and delete all require a logged-in user, and every delete or read of a single trip checks ownership, per F1.R10. A request for another user's trip returns Not found, per F1.R9.
+- **F2.R8** Trips cannot be edited. Only create, list, open and delete exist (product.md §2 Assumptions).
+- **F2.R9** Create, list, open and delete all require a logged-in user, and every read or delete of a single trip checks ownership, per F1.R10. A request for another user's trip returns Not found, per F1.R9.
 - **F2.R10** Each trip records its creation time in UTC (project rules). The list orders by this time.
+- **F2.R11** In the trip list, each trip's name is a link to that trip's page at `/trips/:id`. (Decided 2026-11-05.)
+- **F2.R12** The trip page shows the trip name as its heading and no other trip content in F2. Content for people, expenses, balances and settling up is added by F3–F6. A missing or not-owned trip shows "Trip not found." (Decided 2026-11-05.)
 
 ## Data & contract
 **Trips (new table):**
@@ -60,10 +64,12 @@ Screens: **Trips** (the landing page from F1), **Create trip** (a separate page,
 **Endpoints (paths chosen in the plan):**
 - Create trip: request `{ name }`. Success: the new trip, with `id`, `name`, `created_at`.
 - List my trips: no body. Success: array of trips for the session user, newest first, each with `id`, `name`, `created_at`.
+- Get one trip: path takes the trip `id`. Success: the trip, with `id`, `name`, `created_at`, only if the session user owns it (R12). Not found: same response as a missing trip (F1.R9).
 - Delete trip: path takes the trip `id`. Success: no body. Not found: same response as a missing trip (F1.R9).
 
 **Error shapes:**
 - Validation error on create: HTTP 400, body `{ "error": "<message>" }`, no trip created (F2.AC15).
+- Trip not found (get or delete): HTTP 404, body `{ "error": "Trip not found." }`, same for a missing or not-owned trip (F2.AC11, F2.AC17).
 - Logged-out request to any trip endpoint: HTTP 401, body `{ "error": "Log in required" }`, no data (F1.R10, F1.AC17).
 
 **Cascade:** the trip delete removes trip rows only, until F3–F6 add their tables. Each of those specs must list its records in the delete (R7).
@@ -71,7 +77,7 @@ Screens: **Trips** (the landing page from F1), **Create trip** (a separate page,
 **Browser storage:** none.
 
 ## States & errors
-Copy below is confirmed as written (2026-11-04).
+Copy below is confirmed as written (2026-11-04). "Trip not found." on the trip page was confirmed with the F2 States table (2026-11-04).
 
 | Situation | Where | Proposed copy | Rule |
 |---|---|---|---|
@@ -79,15 +85,18 @@ Copy below is confirmed as written (2026-11-04).
 | Name empty | Create trip | "Enter a trip name." | R1 |
 | Name over 50 characters | Create trip | "Trip names can be up to 50 characters." | R1 |
 | Trip created | Trips | None; new trip at top of list | R3 |
+| Trip page | Trip page | Trip name as the heading; nothing else | R12 |
 | Delete dialog | Trips | Title: "Delete this trip?" Body: "This removes the trip and everything in it. This can't be undone." Buttons: Cancel, Delete | R6, R7 |
 | Trip deleted | Trips | None; row removed | R7 |
-| Trip not found (missing or not owned) | Trip URL | "Trip not found." | F1.R9 |
-| Server error on create, list or delete | Trips | "Something went wrong. Try again." | Project rules: do not swallow errors |
+| Trip not found (missing or not owned) | Trip page | "Trip not found." | F1.R9, R12 |
+| Server error on create, list, open or delete | Trips, Trip page | "Something went wrong. Try again." | Project rules: do not swallow errors |
 
-Loading: the list shows a loading state while it fetches. The Create and Delete buttons are disabled while their request is in progress.
+Loading: the list and the trip page show a loading state while they fetch. The Create and Delete buttons are disabled while their request is in progress.
 
 ## Accessibility
 - The Create trip form's name field has a visible label. Its error is linked to the field and announced to screen readers.
+- Each trip name is a link with its own text, so screen-reader users can tell trips apart.
+- The trip page has one top-level heading, the trip name.
 - The delete dialog traps focus while open, moves focus to Cancel by default, and returns focus to the Delete button on the row when it closes. Escape closes it without deleting.
 - Each row's Delete control has an accessible name that includes the trip name (for example, "Delete Lisbon trip"), so screen-reader users can tell rows apart.
 - Keyboard: Tab order follows the visual order. Enter submits the create form.
@@ -104,6 +113,7 @@ Loading: the list shows a loading state while it fetches. The Create and Delete 
 - Delete of a trip that someone else owns, via a forged request → Not found, nothing deleted (R9).
 - Delete fails partway → the transaction rolls back, and the trip still exists (R7).
 - Session ends while the create form is open → the request is rejected and the user is sent to Log in (F1.R8).
+- Trip page opened for a trip deleted in another tab → Trip not found (R12, F2.AC17).
 
 ## Acceptance criteria
 - **F2.AC1** Given a logged-in user on Create trip, when they submit the name "Lisbon", then a trip named "Lisbon" is created and they land on Trips with it at the top. (R1, R3)
@@ -117,16 +127,19 @@ Loading: the list shows a loading state while it fetches. The Create and Delete 
 - **F2.AC9** Given a trip row, when the user chooses Delete and then Delete in the dialog, then the trip is removed from the list and from the database. (R6, R7)
 - **F2.AC10** Given a trip being deleted, when the delete fails partway, then the trip is still there after the failure. (R7)
 - **F2.AC11** Given a logged-in user, when they request a trip owned by another user, then they get Not found and nothing changes. (R9; F1.R9)
-- **F2.AC12** Given a logged-out visitor, when they call create, list or delete for a trip, then the request is rejected with HTTP 401 and a JSON error, and no trip data is returned. (R9; F1.R10, F1.AC17)
+- **F2.AC12** Given a logged-out visitor, when they call create, list, open or delete for a trip, then the request is rejected with HTTP 401 and a JSON error, and no trip data is returned. (R9; F1.R10, F1.AC17)
 - **F2.AC13** Given a trip, when the user looks for a way to change its name, then no edit control exists. (R8)
 - **F2.AC14** Given a name with surrounding spaces, when it is submitted, then the saved name has no surrounding spaces; and a name of only spaces is refused with "Enter a trip name." (R1)
 - **F2.AC15** Given a create request that fails validation, when the API responds, then the status is 400 with a JSON body `{ "error": "<message>" }` and no trip is created. (R1)
+- **F2.AC16** Given a trip in the list, when the user selects its name, then the trip page opens with the trip name as its heading and no other trip content. (R11, R12)
+- **F2.AC17** Given a logged-in user, when they open the page or request the data for a trip that is missing or owned by another user, then "Trip not found." is shown (or HTTP 404 with the same body) and no trip data appears. (R12, R9; F1.R9)
 
 ## Dependencies
-- **F1** (Registration and login) must be built first. F2 uses the session and ownership rules from F1. F1 is currently Draft after its 2026-11-04 revision, so F1 needs re-approval before F2 is planned.
+- **F1** (Registration and login) must be built first. F2 uses the session and ownership rules from F1. F1 spec and plan are both Approved.
 - **Build order:** step 2. F3 (People) and later features depend on F2.
 - **External services:** none.
 - **Cascade contract for later features:** F3, F4 and F6 add their tables to the trip delete (R7).
+- **Trip page for later features:** F3–F6 add their sections to the trip page built in R12.
 
 ## Test plan
 Unit tests only (project rules). Each test names its AC ID. Ownership and transactions cannot be proven by unit tests, so they go to code review.
@@ -141,14 +154,16 @@ Unit tests only (project rules). Each test names its AC ID. Ownership and transa
 - **F2.AC7** Unit test: empty list view renders the message and button when the list is empty. (R5)
 - **F2.AC8** Unit test: Cancel in the delete dialog does not call the delete service. (R6)
 - **F2.AC9** Unit test: Delete in the dialog calls the delete service once for the chosen trip. (R6)
-- **F2.AC12** Unit test: create, list and delete services reject a request with no session before touching the store, with HTTP 401 and a JSON error. (R9; F1.AC17)
+- **F2.AC12** Unit test: create, list, open and delete services reject a request with no session before touching the store, with HTTP 401 and a JSON error. (R9; F1.AC17)
 - **F2.AC13** Unit test: trip row view has no edit control. (R8)
+- **F2.AC16** Unit test: the trip name in a row is a link to `/trips/:id`, and the trip page view renders the name as its heading with no other trip content. (R11, R12)
+- **F2.AC17** Unit test: the trip page shows "Trip not found." when the get returns not-found, and the get route returns 404 with `{ "error": "Trip not found." }` for a trip the fake store does not return for that owner. (R12, R9)
 - **F2.AC5** Code review: the list query filters by the session user's ID in the database query. (R4, R9)
-- **F2.AC11** Code review: the single-trip lookup for delete includes the owner check and returns the same response as a missing trip. (R9)
+- **F2.AC11** Code review: the single-trip lookup for get and delete includes the owner check and returns the same response as a missing trip. (R9)
 - **F2.AC10** Code review: the delete runs in one transaction and rolls back on error. (R7)
 
 ## Open questions
-None. All six questions were answered on 2026-11-04 (see Decisions log).
+None. All questions are answered (2026-11-04 and 2026-11-05; see Decisions log).
 
 ## Decisions log
 - 2026-11-04: Can two trips owned by the same user have the same name? → Yes, duplicates allowed.
@@ -166,3 +181,8 @@ None. All six questions were answered on 2026-11-04 (see Decisions log).
 - 2026-11-04: Error response for validation errors → HTTP 400 with JSON `{ "error" }` (F2.AC15). Logged-out responses follow F1 (401, F1.AC17).
 - 2026-11-04: Answers changed the spec's substance (trimming, Create trip page, error shape), so the spec returns to Draft and needs re-approval.
 - 2026-11-04: Spec re-approved by the user.
+- 2026-11-05: Dependencies said F1 was Draft. F1 spec and plan are Approved, so the line was corrected. No requirement or AC changed at that point.
+- 2026-11-05: How does a user open a trip from the list? → The trip name is a link to `/trips/:id` (F2.R11, F2.AC16).
+- 2026-11-05: What does the trip page show before F3? → The trip name as the heading, and nothing else (F2.R12, F2.AC16). "Trip not found." is used for a missing or not-owned trip.
+- 2026-11-05: Answers added a new requirement (open a trip), a read endpoint, and two acceptance criteria. The spec returns to Draft and needs re-approval. The F2 plan's trip page and row-link tasks can now be planned.
+- 2026-11-05: Spec approved by the user.
