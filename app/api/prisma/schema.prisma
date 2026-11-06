@@ -1,0 +1,9 @@
+// Models are added by each feature plan (F1 adds User). Keep this file empty of models until then.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
