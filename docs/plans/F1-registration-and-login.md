@@ -1,6 +1,6 @@
 # F1 plan — Registration and login
 
-_Status: Approved · Spec: `docs/specs/features/F1-registration-and-login.md` (Approved) · Last updated: 2026-11-04_
+_Status: Approved · Spec: `docs/specs/features/F1-registration-and-login.md` (Approved) · Last updated: 2026-11-06_
 
 ## Approach
 
@@ -48,7 +48,7 @@ Each task is one commit. Its commit message starts with its ID, for example `F1.
 
 ### F1.T4 — Database models and migration
 
-- **Files:** `app/api/prisma/schema.prisma`, `app/api/prisma/migrations/<timestamp>_add_users_and_sessions/migration.sql` (generated), `app/api/src/db.ts`
+- **Files:** `app/api/prisma/schema.prisma`, `app/api/prisma/migrations/<timestamp>_add_users_and_sessions/migration.sql` (generated), `app/api/prisma/migrations/migration_lock.toml` (generated), `app/api/src/db.ts`, `app/api/package.json` (adds `@prisma/adapter-better-sqlite3`), `app/package-lock.json`
 - **Depends on:** F1.T3
 - **Work:**
   - `User`: `id` (uuid), `email` (normalized, required), `emailKey` (normalized, unique), `passwordHash` (required), `createdAt` (UTC).
@@ -212,6 +212,7 @@ Cross-feature dependencies: none. F1 is the base. F2 must apply `requireLogin` (
 - 2026-11-04: Web routing uses `react-router`, as CLAUDE.md's stack names it. It is not yet installed in `app/web`.
 - 2026-11-04: F1.AC9 and F1.AC11 cannot be proven until F2 adds trip queries. They stay in this plan as code-review items to check at F2.
 - 2026-11-04: Prisma 7.10.1 needs a SQLite driver adapter. The adapter is chosen when F1.T4 runs, against the installed Prisma version.
+- 2026-11-06: Adapter chosen for F1.T4: `@prisma/adapter-better-sqlite3@7.10.1` (Prisma's usual SQLite adapter for Prisma 7, constructor `new PrismaBetterSqlite3({ url })`). Added to `app/api/package.json`, so T4's Files line now lists `app/api/package.json` and `app/package-lock.json`, and the generated `migration_lock.toml`. The user approved the change on 2026-11-06.
 
 ## Sent back to the spec
 
