@@ -9,6 +9,7 @@ import {
   useSearchParams,
 } from "react-router";
 import { logout, me, messageFor, type AuthUser } from "./auth/api";
+import { CreateTripPage } from "./pages/CreateTripPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { TripsPage } from "./pages/TripsPage";
@@ -101,6 +102,7 @@ export function AppShell() {
           <Route path="/login" element={<LoginPage onSuccess={handleAuthSuccess} />} />
           <Route path="/register" element={<RegisterPage onSuccess={handleAuthSuccess} />} />
           <Route path="/trips" element={<TripsPage />} />
+          <Route path="/trips/new" element={<CreateTripPage />} />
         </Routes>
       )}
     </>
