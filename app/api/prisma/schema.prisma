@@ -17,6 +17,7 @@ model User {
   passwordHash String
   createdAt    DateTime  @default(now())
   sessions     Session[]
+  trips        Trip[]
 }
 
 // F1.R7: id is the SHA-256 hash of the session token. The token itself is never stored.
@@ -25,4 +26,17 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+// F2.R2, F2.R9: ownerId is set by the server from the session. Trips are read by owner
+// and ordered by creation time (F2.R10), so the index is on (ownerId, createdAt).
+// name is not unique: duplicate names are allowed for one owner (F2.AC3).
+model Trip {
+  id        String   @id @default(uuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+
+  @@index([ownerId, createdAt])
 }
