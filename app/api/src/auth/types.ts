@@ -14,10 +14,11 @@ export interface NewUser {
   passwordHash: string;
 }
 
-// The store looks users up by the normalized email key (F1.R2).
+// The store looks users up by the normalized email key (F1.R2) and by id (F1.AC7, /auth/me).
 // create() must raise EmailTakenError when emailKey is already in use (F1.R2, F1.R5).
 export interface UserStore {
   findByEmailKey(emailKey: string): Promise<StoredUser | null>;
+  findById(id: string): Promise<StoredUser | null>;
   create(user: NewUser): Promise<StoredUser>;
 }
 

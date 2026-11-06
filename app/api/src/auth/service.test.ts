@@ -21,6 +21,9 @@ function createFakeStore() {
     async findByEmailKey(emailKey) {
       return users.find((u) => u.emailKey === emailKey) ?? null;
     },
+    async findById(id) {
+      return users.find((u) => u.id === id) ?? null;
+    },
     async create(newUser) {
       createCalls.push(newUser);
       if (users.some((u) => u.emailKey === newUser.emailKey)) {
@@ -139,6 +142,9 @@ describe("F1.AC3 duplicate email is refused neutrally (F1.R2, F1.R5)", () => {
       async findByEmailKey() {
         return null;
       },
+      async findById() {
+        return null;
+      },
       async create(newUser) {
         createCalls.push(newUser);
         throw new EmailTakenError();
@@ -157,6 +163,9 @@ describe("F1.AC3 duplicate email is refused neutrally (F1.R2, F1.R5)", () => {
     const boom = new Error("database unavailable");
     const failingStore: UserStore = {
       async findByEmailKey() {
+        return null;
+      },
+      async findById() {
         return null;
       },
       async create() {

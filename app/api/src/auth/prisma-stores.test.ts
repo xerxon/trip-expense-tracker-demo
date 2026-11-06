@@ -80,6 +80,30 @@ describe("prisma-stores", () => {
     });
   });
 
+  it("F1.AC7 user store finds a user by id with a parameter and returns null when absent", async () => {
+    const row = {
+      id: "u1",
+      email: "a@example.com",
+      emailKey: "a@example.com",
+      passwordHash: "h",
+      createdAt: new Date(0),
+    };
+    const findUnique = vi.fn().mockResolvedValueOnce(row).mockResolvedValueOnce(null);
+    const db = { user: { findUnique } } as unknown as Db;
+    const store = createUserStore(db);
+
+    await expect(store.findById("u1")).resolves.toEqual({
+      id: "u1",
+      email: "a@example.com",
+      emailKey: "a@example.com",
+      passwordHash: "h",
+    });
+    expect(findUnique).toHaveBeenLastCalledWith({ where: { id: "u1" } });
+
+    await expect(store.findById("missing")).resolves.toBeNull();
+    expect(findUnique).toHaveBeenLastCalledWith({ where: { id: "missing" } });
+  });
+
   it("F1.R7 session store inserts, finds and deletes by hash with parameters", async () => {
     const insert = vi.fn().mockResolvedValue({ id: "hash1", userId: "u1", createdAt: new Date(0) });
     const findUnique = vi.fn().mockResolvedValue({ id: "hash1", userId: "u1" });

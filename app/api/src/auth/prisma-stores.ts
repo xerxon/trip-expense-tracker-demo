@@ -50,6 +50,12 @@ export function createUserStore(db: Db): UserStore {
       return { id: row.id, email: row.email, emailKey: row.emailKey, passwordHash: row.passwordHash };
     },
 
+    async findById(id: string): Promise<StoredUser | null> {
+      const row = await db.user.findUnique({ where: { id } });
+      if (row === null) return null;
+      return { id: row.id, email: row.email, emailKey: row.emailKey, passwordHash: row.passwordHash };
+    },
+
     async create(user: NewUser): Promise<StoredUser> {
       try {
         const row = await db.user.create({
