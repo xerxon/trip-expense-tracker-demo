@@ -1,4 +1,4 @@
-// Models are added by each feature plan (F1 adds User). Keep this file empty of models until then.
+// Models are added by each feature plan (F1 adds User and Session).
 
 generator client {
   provider = "prisma-client-js"
@@ -6,4 +6,23 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+}
+
+// F1.R2, F1.R4: emailKey is the normalized (trimmed, lower-cased) email and is
+// unique in the database. email holds the same normalized value.
+model User {
+  id           String    @id @default(uuid())
+  email        String
+  emailKey     String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+}
+
+// F1.R7: id is the SHA-256 hash of the session token. The token itself is never stored.
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
