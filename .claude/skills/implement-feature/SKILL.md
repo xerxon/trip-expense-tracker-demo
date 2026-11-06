@@ -19,7 +19,7 @@ This skill never pushes. It never edits a spec, a plan, or `product.md`.
 - Find the plan with `docs/plans/F<N>-*.md`. No plan file → say so and say to run `/plan-feature F<N>` first. Stop.
 - Line 3 of the plan must read `_Status: Approved`. Otherwise refuse, say the plan must be approved through `/plan-feature F<N>`, and stop.
 - `git branch --show-current` must not be `main`. On `main`, refuse and say to switch to the feature branch (for example `F5-balances` or `week-2`) first. Stop.
-- `git status --porcelain` must print nothing. Any uncommitted change → refuse, list the files, and stop. Do not stash or discard anything.
+- `git status --porcelain -- . ':!docs/activities-outputs/session-logs/'` must print nothing. The session-logs folder is excluded on purpose: its files are never committed and are left untracked. Any other uncommitted change → refuse, list the files, and stop. Do not stash or discard anything.
 
 ## 2. Pick the next task
 
@@ -48,7 +48,7 @@ Call the Agent tool with `subagent_type: "developer"`. The brief has these parts
   - `npm test -w web` if they are all under `app/web/`
   - `npm test` if they span both
   - Then `npm run typecheck`.
-- Compare `git status --porcelain` with the task's **Files** line. Any changed or new file outside that list is a problem. Show it.
+- Compare `git status --porcelain -- . ':!docs/activities-outputs/session-logs/'` with the task's **Files** line. Any changed or new file outside that list is a problem. Show it.
 - Show the user the agent's report and the test results (the command and its pass or fail summary).
 
 ## 5. Retry rule
